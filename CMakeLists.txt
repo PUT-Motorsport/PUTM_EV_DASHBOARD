@@ -53,32 +53,35 @@ add_subdirectory(cmake/touchgfx)
 
 add_subdirectory(Components/PUTM_EV_CAN_LIBRARY)
 
+# CAN lib picks the HAL by family macro; CubeMX only defines STM32U5A9xx
+target_compile_definitions(putm_ev_can PUBLIC STM32U5)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
 # Add sources to executable
-file(GLOB_RECURSE graphics_core_generated_SRCS
-    ${root_tgfx_dir}/generated/*.cpp
-    ${root_tgfx_dir}/gui/*.cpp
-    ${root_tgfx_dir}/gui/*.c
+# User application sources (TouchGFX sources come from cmake/touchgfx)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Src/data.c
     ${CMAKE_SOURCE_DIR}/Core/Src/communication_task.cpp
     ${CMAKE_SOURCE_DIR}/Core/Src/timer_task.cpp
     ${CMAKE_SOURCE_DIR}/Core/Src/led_test_task.cpp
     ${CMAKE_SOURCE_DIR}/Core/Src/interface_task.cpp
-    ${CMAKE_SOURCE_DIR}/Drivers/BSP/Components/mx25lm51245g.c
-)
-
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    ${graphics_core_generated_SRCS}
-    
+    ${CMAKE_SOURCE_DIR}/Drivers/BSP/Components/mx25lm51245g/mx25lm51245g.c
     # Add user sources here
 )
 
 set(root_tgfx_dir ${CMAKE_SOURCE_DIR}/TouchGFX)
+
+# Linker script: use our own file instead of the one CubeMX manages.
+# cmake/gcc-arm-none-eabi.cmake adds -T STM32U5A9xx_FLASH.ld; remove it and use ours.
+set(DASHBOARD_LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32U5A9_Dashboard_FLASH.ld)
+string(REGEX REPLACE "-T[ ]*\"?[^ \"]*STM32U5A9xx_FLASH\\.ld\"?" ""
+       CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-T${DASHBOARD_LINKER_SCRIPT}")
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES LINK_DEPENDS ${DASHBOARD_LINKER_SCRIPT})
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -115,5 +118,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     # Add user defined libraries
 
     # The TouchGFX library file for ARM (not the simulator version)
-     ${CMAKE_SOURCE_DIR}/Middlewares/ST/touchgfx/lib/core/cortex_m33/gcc/libtouchgfx-float-abi-hard.a
+     #${CMAKE_SOURCE_DIR}/Middlewares/ST/touchgfx/lib/core/cortex_m33/gcc/libtouchgfx-float-abi-hard.a
 )
